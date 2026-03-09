@@ -10,17 +10,15 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # 1. 스크립트를 돌리기 위해 Node.js 환경을 세팅합니다.
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
 
-      # 2. 노션 공식 API와 마크다운 변환 라이브러리를 설치합니다.
+      # 🚨 [핵심 해결책] 오류를 뱉지 않는 안정화된 특정 버전을 강제로 고정해서 설치합니다.
       - name: Install Dependencies
-        run: npm install @notionhq/client notion-to-md
+        run: npm install @notionhq/client@2.2.15 notion-to-md@3.1.1
 
-      # 3. 직접 노션 데이터를 가져와 마크다운 파일로 저장하는 JS 스크립트를 생성하고 실행합니다.
       - name: Fetch Notion Data and Save as Markdown
         env:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
@@ -32,47 +30,66 @@ jobs:
           const fs = require("fs");
           const path = require("path");
 
+          // 클라이언트 초기화
           const notion = new Client({ auth: process.env.NOTION_TOKEN });
           const n2m = new NotionToMarkdown({ notionClient: notion });
 
           (async () => {
-            const dbId = process.env.NOTION_DATABASE_ID;
-            // 1. 데이터베이스에서 페이지 목록 가져오기
-            const response = await notion.databases.query({ database_id: dbId });
-            
-            // 2. docs 폴더 생성
-            const dir = path.join(process.cwd(), "docs");
-            if (!fs.existsSync(dir)) fs.mkdirSync(dir);
+            try {
+              const dbId = process.env.NOTION_DATABASE_ID;
+              console.log("🔎 데이터베이스 조회를 시작합니다. ID:", dbId);
+              
+              // 1. 데이터베이스에서 페이지 목록 가져오기
+              const response = await notion.databases.query({ database_id: dbId });
+              console.log(`📦 총 ${response.results.length}개의 페이지를 찾았습니다.`);
 
-            // 3. 각 페이지를 돌면서 마크다운으로 변환
-            for (const page of response.results) {
-              let title = page.id; // 기본값은 페이지 ID
-              // 표에서 '제목' 속성 찾기
-              for (const key in page.properties) {
-                if (page.properties[key].type === "title") {
-                  title = page.properties[key].title[0]?.plain_text || page.id;
-                  break;
+              // 2. docs 폴더 생성
+              const dir = path.join(process.cwd(), "docs");
+              if (!fs.existsSync(dir)) fs.mkdirSync(dir);
+
+              // 3. 각 페이지를 돌면서 마크다운으로 변환
+              for (const page of response.results) {
+                let title = page.id; 
+                
+                // 표에서 '제목' 속성 찾아오기
+                for (const key in page.properties) {
+                  if (page.properties[key].type === "title") {
+                    title = page.properties[key].title[0]?.plain_text || page.id;
+                    break;
+                  }
                 }
+                
+                // [안전장치] 제목에 /, ? 등 파일명으로 쓸 수 없는 특수문자가 있다면 대시(-)로 치환
+                const safeTitle = title.replace(/[\/\\?%*:|"<>]/g, '-');
+                
+                console.log(`✍️ 마크다운 변환 중: ${safeTitle}`);
+                
+                const mdblocks = await n2m.pageToMarkdown(page.id);
+                const mdString = n2m.toMarkdownString(mdblocks);
+                
+                // notion-to-md 라이브러리의 반환 구조 처리
+                const content = mdString.parent ? mdString.parent : mdString;
+                
+                // 4. 마크다운 파일로 저장
+                fs.writeFileSync(path.join(dir, `${safeTitle}.md`), content);
+                console.log(`✅ 저장 완료: docs/${safeTitle}.md`);
               }
+              console.log("🎉 모든 작업이 성공적으로 끝났습니다!");
               
-              const mdblocks = await n2m.pageToMarkdown(page.id);
-              const mdString = n2m.toMarkdownString(mdblocks);
-              const content = mdString.parent ? mdString.parent : mdString;
-              
-              // 4. 마크다운 파일로 저장
-              fs.writeFileSync(path.join(dir, `${title}.md`), content);
-              console.log(`✅ 성공적으로 저장됨: ${title}.md`);
+            } catch (error) {
+              // 에러 발생 시 원인을 정확히 파악하기 위한 로그
+              console.error("❌ 에러가 발생했습니다:", error);
+              process.exit(1); 
             }
           })();
           EOF
           node sync.js
 
-      # 4. 새로 생성된 파일들을 깃허브에 커밋하고 푸시합니다.
       - name: Commit and Push changes
         run: |
           git config --global user.name 'gototheTK'
           git config --global user.email 'gototkno1@gmail.com'
           git add docs/
-          # 변경사항이 있을 때만 커밋 (에러 방지용)
+          # 변경사항이 있을 때만 커밋
           git diff --quiet && git diff --staged --quiet || git commit -m "docs: 노션 Q&A 자동 동기화 완료"
           git push
