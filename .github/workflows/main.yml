@@ -1,0 +1,78 @@
+name: Notion to GitHub Sync
+
+on:
+  workflow_dispatch: # 언제든 수동으로 버튼을 눌러 실행 가능
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      # 1. 스크립트를 돌리기 위해 Node.js 환경을 세팅합니다.
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      # 2. 노션 공식 API와 마크다운 변환 라이브러리를 설치합니다.
+      - name: Install Dependencies
+        run: npm install @notionhq/client notion-to-md
+
+      # 3. 직접 노션 데이터를 가져와 마크다운 파일로 저장하는 JS 스크립트를 생성하고 실행합니다.
+      - name: Fetch Notion Data and Save as Markdown
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+        run: |
+          cat << 'EOF' > sync.js
+          const { Client } = require("@notionhq/client");
+          const { NotionToMarkdown } = require("notion-to-md");
+          const fs = require("fs");
+          const path = require("path");
+
+          const notion = new Client({ auth: process.env.NOTION_TOKEN });
+          const n2m = new NotionToMarkdown({ notionClient: notion });
+
+          (async () => {
+            const dbId = process.env.NOTION_DATABASE_ID;
+            // 1. 데이터베이스에서 페이지 목록 가져오기
+            const response = await notion.databases.query({ database_id: dbId });
+            
+            // 2. docs 폴더 생성
+            const dir = path.join(process.cwd(), "docs");
+            if (!fs.existsSync(dir)) fs.mkdirSync(dir);
+
+            // 3. 각 페이지를 돌면서 마크다운으로 변환
+            for (const page of response.results) {
+              let title = page.id; // 기본값은 페이지 ID
+              // 표에서 '제목' 속성 찾기
+              for (const key in page.properties) {
+                if (page.properties[key].type === "title") {
+                  title = page.properties[key].title[0]?.plain_text || page.id;
+                  break;
+                }
+              }
+              
+              const mdblocks = await n2m.pageToMarkdown(page.id);
+              const mdString = n2m.toMarkdownString(mdblocks);
+              const content = mdString.parent ? mdString.parent : mdString;
+              
+              // 4. 마크다운 파일로 저장
+              fs.writeFileSync(path.join(dir, `${title}.md`), content);
+              console.log(`✅ 성공적으로 저장됨: ${title}.md`);
+            }
+          })();
+          EOF
+          node sync.js
+
+      # 4. 새로 생성된 파일들을 깃허브에 커밋하고 푸시합니다.
+      - name: Commit and Push changes
+        run: |
+          git config --global user.name 'gototheTK'
+          git config --global user.email 'gototkno1@gmail.com'
+          git add docs/
+          # 변경사항이 있을 때만 커밋 (에러 방지용)
+          git diff --quiet && git diff --staged --quiet || git commit -m "docs: 노션 Q&A 자동 동기화 완료"
+          git push
