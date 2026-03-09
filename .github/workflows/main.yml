@@ -1,7 +1,7 @@
 name: Notion to GitHub Sync
 
 on:
-  workflow_dispatch: # 언제든 수동으로 버튼을 눌러 실행 가능
+  workflow_dispatch:
 
 jobs:
   sync:
@@ -15,7 +15,6 @@ jobs:
         with:
           node-version: '18'
 
-      # 🚨 [핵심 해결책] 오류를 뱉지 않는 안정화된 특정 버전을 강제로 고정해서 설치합니다.
       - name: Install Dependencies
         run: npm install @notionhq/client@2.2.15 notion-to-md@3.1.1
 
@@ -30,7 +29,6 @@ jobs:
           const fs = require("fs");
           const path = require("path");
 
-          // 클라이언트 초기화
           const notion = new Client({ auth: process.env.NOTION_TOKEN });
           const n2m = new NotionToMarkdown({ notionClient: notion });
 
@@ -39,19 +37,15 @@ jobs:
               const dbId = process.env.NOTION_DATABASE_ID;
               console.log("🔎 데이터베이스 조회를 시작합니다. ID:", dbId);
               
-              // 1. 데이터베이스에서 페이지 목록 가져오기
               const response = await notion.databases.query({ database_id: dbId });
               console.log(`📦 총 ${response.results.length}개의 페이지를 찾았습니다.`);
 
-              // 2. docs 폴더 생성
               const dir = path.join(process.cwd(), "docs");
               if (!fs.existsSync(dir)) fs.mkdirSync(dir);
 
-              // 3. 각 페이지를 돌면서 마크다운으로 변환
               for (const page of response.results) {
                 let title = page.id; 
                 
-                // 표에서 '제목' 속성 찾아오기
                 for (const key in page.properties) {
                   if (page.properties[key].type === "title") {
                     title = page.properties[key].title[0]?.plain_text || page.id;
@@ -59,25 +53,26 @@ jobs:
                   }
                 }
                 
-                // [안전장치] 제목에 /, ? 등 파일명으로 쓸 수 없는 특수문자가 있다면 대시(-)로 치환
                 const safeTitle = title.replace(/[\/\\?%*:|"<>]/g, '-');
-                
                 console.log(`✍️ 마크다운 변환 중: ${safeTitle}`);
                 
                 const mdblocks = await n2m.pageToMarkdown(page.id);
                 const mdString = n2m.toMarkdownString(mdblocks);
                 
-                // notion-to-md 라이브러리의 반환 구조 처리
-                const content = mdString.parent ? mdString.parent : mdString;
+                // 🚨 [핵심 버그 수정 부분] 내용이 비어있든, 객체든 무조건 안전하게 문자열(String)로 추출!
+                let content = "";
+                if (typeof mdString === "string") {
+                  content = mdString;
+                } else if (typeof mdString === "object" && mdString !== null) {
+                  content = mdString.parent || "";
+                }
                 
-                // 4. 마크다운 파일로 저장
                 fs.writeFileSync(path.join(dir, `${safeTitle}.md`), content);
                 console.log(`✅ 저장 완료: docs/${safeTitle}.md`);
               }
               console.log("🎉 모든 작업이 성공적으로 끝났습니다!");
               
             } catch (error) {
-              // 에러 발생 시 원인을 정확히 파악하기 위한 로그
               console.error("❌ 에러가 발생했습니다:", error);
               process.exit(1); 
             }
@@ -90,6 +85,5 @@ jobs:
           git config --global user.name 'gototheTK'
           git config --global user.email 'gototkno1@gmail.com'
           git add docs/
-          # 변경사항이 있을 때만 커밋
           git diff --quiet && git diff --staged --quiet || git commit -m "docs: 노션 Q&A 자동 동기화 완료"
           git push
