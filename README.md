@@ -3,7 +3,7 @@ Tech Interview Preparation Q&amp;A
 
 기술 면저 대비 Q&A 정
 
-### [프로그래밍] (https://github.com/gototheTK/tech-interview-preparation/blob/master/docs/%ED%94%84%EB%A1%9C%EA%B7%B8%EB%9E%98%EB%B0%8D.md)
+### [프로그래밍](https://github.com/gototheTK/tech-interview-preparation/blob/master/docs/%ED%94%84%EB%A1%9C%EA%B7%B8%EB%9E%98%EB%B0%8D.md)
 
 ### [운영체제] (https://github.com/gototheTK/tech-interview-preparation/blob/master/docs/%EC%9A%B4%EC%98%81%EC%B2%B4%EC%A0%9C.md)
 
