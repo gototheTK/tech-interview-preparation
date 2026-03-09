@@ -45,35 +45,37 @@ jobs:
 
               for (const page of response.results) {
                 let title = page.id; 
-                
                 for (const key in page.properties) {
                   if (page.properties[key].type === "title") {
                     title = page.properties[key].title[0]?.plain_text || page.id;
                     break;
                   }
                 }
-                
                 const safeTitle = title.replace(/[\/\\?%*:|"<>]/g, '-');
-                console.log(`✍️ 마크다운 변환 중: ${safeTitle}`);
                 
-                const mdblocks = await n2m.pageToMarkdown(page.id);
-                const mdString = n2m.toMarkdownString(mdblocks);
-                
-                // 🚨 [핵심 버그 수정 부분] 내용이 비어있든, 객체든 무조건 안전하게 문자열(String)로 추출!
-                let content = "";
-                if (typeof mdString === "string") {
-                  content = mdString;
-                } else if (typeof mdString === "object" && mdString !== null) {
-                  content = mdString.parent || "";
+                // 🚨 [최종 방어 로직] 502 에러가 나면 전체를 멈추지 않고, 해당 파일만 건너뜁니다.
+                try {
+                  console.log(`✍️ 마크다운 변환 중: ${safeTitle}`);
+                  const mdblocks = await n2m.pageToMarkdown(page.id);
+                  const mdString = n2m.toMarkdownString(mdblocks);
+                  
+                  let content = "";
+                  if (typeof mdString === "string") {
+                    content = mdString;
+                  } else if (typeof mdString === "object" && mdString !== null) {
+                    content = mdString.parent || "";
+                  }
+                  
+                  fs.writeFileSync(path.join(dir, `${safeTitle}.md`), content);
+                  console.log(`✅ 저장 완료: docs/${safeTitle}.md`);
+                } catch (pageError) {
+                  console.error(`⚠️ [${safeTitle}] 노션 서버 장애(502 등)로 본문 가져오기 실패. 건너뜁니다:`, pageError.message);
                 }
-                
-                fs.writeFileSync(path.join(dir, `${safeTitle}.md`), content);
-                console.log(`✅ 저장 완료: docs/${safeTitle}.md`);
               }
-              console.log("🎉 모든 작업이 성공적으로 끝났습니다!");
+              console.log("🎉 모든 작업이 끝났습니다!");
               
             } catch (error) {
-              console.error("❌ 에러가 발생했습니다:", error);
+              console.error("❌ 치명적인 에러가 발생했습니다:", error);
               process.exit(1); 
             }
           })();
