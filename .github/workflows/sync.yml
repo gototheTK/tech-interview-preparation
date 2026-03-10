@@ -85,9 +85,11 @@ jobs:
 
               // 💡 [추가됨] README.md 자동 생성 로직
               console.log("📝 README.md 목차 생성을 시작합니다...");
-              const readmeContent = `# 🧠 백엔드 CS & 아키텍처 스파링 기록이 레포지토리는 Notion 데이터베이스와 GitHub Actions를 통해 자동 동기화되는 지식 저장소입니다. 
-              ## 📚 최근 학습 목록 
+              const readmeContent = `# Tech Interview Preparation Q&A
+              ## 📚 최근 학습 목록
+              
               ${indexList.length > 0 ? indexList.join('\n') : '- 아직 작성된 문서가 없습니다.'}
+              
               ---
               *최종 업데이트: ${new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}*`;
               
