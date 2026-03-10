@@ -88,6 +88,7 @@ jobs:
               const readmeContent = `# Tech Interview Preparation Q&A
               ## 📚 최근 학습 목록
               ---
+              \n
               ${indexList.length > 0 ? indexList.join('\n') : '- 아직 작성된 문서가 없습니다.'}
               ---
               *최종 업데이트: ${new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}*`;
