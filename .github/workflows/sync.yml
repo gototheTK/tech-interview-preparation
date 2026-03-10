@@ -2,6 +2,9 @@ name: Notion to GitHub Sync
 
 on:
   workflow_dispatch:
+  # 원하신다면 아래 주석을 풀어서 매일 자정에 자동 실행되게 할 수도 있습니다.
+  schedule:
+     - cron: '0 15 * * *'
 
 jobs:
   sync:
@@ -43,6 +46,9 @@ jobs:
               const dir = path.join(process.cwd(), "docs");
               if (!fs.existsSync(dir)) fs.mkdirSync(dir);
 
+              // 💡 [추가됨] README에 넣을 목차 리스트를 담을 빈 배열
+              const indexList = [];
+
               for (const page of response.results) {
                 let title = page.id; 
                 for (const key in page.properties) {
@@ -53,7 +59,6 @@ jobs:
                 }
                 const safeTitle = title.replace(/[\/\\?%*:|"<>]/g, '-');
                 
-                // 🚨 [최종 방어 로직] 502 에러가 나면 전체를 멈추지 않고, 해당 파일만 건너뜁니다.
                 try {
                   console.log(`✍️ 마크다운 변환 중: ${safeTitle}`);
                   const mdblocks = await n2m.pageToMarkdown(page.id);
@@ -68,10 +73,27 @@ jobs:
                   
                   fs.writeFileSync(path.join(dir, `${safeTitle}.md`), content);
                   console.log(`✅ 저장 완료: docs/${safeTitle}.md`);
+
+                  // 💡 [추가됨] 저장에 성공한 파일만 목차 배열에 추가 (띄어쓰기/한글 파일명 링크 에러 방지를 위해 URI 인코딩)
+                  const encodedTitle = encodeURIComponent(`${safeTitle}.md`);
+                  indexList.push(`- [${safeTitle}](./docs/${encodedTitle})`);
+
                 } catch (pageError) {
-                  console.error(`⚠️ [${safeTitle}] 노션 서버 장애(502 등)로 본문 가져오기 실패. 건너뜁니다:`, pageError.message);
+                  console.error(`⚠️ [${safeTitle}] 노션 서버 장애로 건너뜁니다:`, pageError.message);
                 }
               }
+
+              // 💡 [추가됨] README.md 자동 생성 로직
+              console.log("📝 README.md 목차 생성을 시작합니다...");
+              const readmeContent = `# 🧠 백엔드 CS & 아키텍처 스파링 기록이 레포지토리는 Notion 데이터베이스와 GitHub Actions를 통해 자동 동기화되는 지식 저장소입니다. 
+              ## 📚 최근 학습 목록 
+              ${indexList.length > 0 ? indexList.join('\n') : '- 아직 작성된 문서가 없습니다.'}
+              ---
+              *최종 업데이트: ${new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}*`;
+              
+              fs.writeFileSync(path.join(process.cwd(), "README.md"), readmeContent);
+              console.log("✅ README.md 업데이트 완료!");
+
               console.log("🎉 모든 작업이 끝났습니다!");
               
             } catch (error) {
@@ -86,6 +108,7 @@ jobs:
         run: |
           git config --global user.name 'gototheTK'
           git config --global user.email 'gototkno1@gmail.com'
-          git add docs/
-          git diff --quiet && git diff --staged --quiet || git commit -m "docs: 노션 Q&A 자동 동기화 완료"
+          # 💡 [수정됨] docs 폴더뿐만 아니라 루트에 생긴 README.md까지 전부 커밋하도록 변경
+          git add .
+          git diff --quiet && git diff --staged --quiet || git commit -m "docs: 노션 Q&A 및 README 자동 동기화 완료"
           git push
