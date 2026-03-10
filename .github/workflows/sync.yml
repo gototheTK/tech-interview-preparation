@@ -85,12 +85,9 @@ jobs:
 
               // 💡 [추가됨] README.md 자동 생성 로직
               console.log("📝 README.md 목차 생성을 시작합니다...");
-              const readmeContent = `# Tech Interview Preparation Q&A
-              ## 📚 최근 학습 목록
-              ---
+              const readmeContent = `# Tech Interview Preparation Q&A \n ## 📚 최근 학습 목록
               \n
               ${indexList.length > 0 ? indexList.join('\n') : '- 아직 작성된 문서가 없습니다.'}
-              ---
               *최종 업데이트: ${new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}*`;
               
               fs.writeFileSync(path.join(process.cwd(), "README.md"), readmeContent);
