@@ -3,7 +3,6 @@
  - [동시성 처리](./docs/%EB%8F%99%EC%8B%9C%EC%84%B1%20%EC%B2%98%EB%A6%AC.md)
 - [면접 틀린 질문 복기](./docs/%EB%A9%B4%EC%A0%91%20%ED%8B%80%EB%A6%B0%20%EC%A7%88%EB%AC%B8%20%EB%B3%B5%EA%B8%B0.md)
 - [데브옵스](./docs/%EB%8D%B0%EB%B8%8C%EC%98%B5%EC%8A%A4.md)
-- [자료구조 및 알고리즘](./docs/%EC%9E%90%EB%A3%8C%EA%B5%AC%EC%A1%B0%20%EB%B0%8F%20%EC%95%8C%EA%B3%A0%EB%A6%AC%EC%A6%98.md)
 - [자바 문법](./docs/%EC%9E%90%EB%B0%94%20%EB%AC%B8%EB%B2%95.md)
 - [네트워크](./docs/%EB%84%A4%ED%8A%B8%EC%9B%8C%ED%81%AC.md)
 - [틀린 복습 퀴즈](./docs/%ED%8B%80%EB%A6%B0%20%EB%B3%B5%EC%8A%B5%20%ED%80%B4%EC%A6%88.md)
@@ -15,4 +14,4 @@
     
  --- 
     
- *최종 업데이트: 2026. 5. 24. 오전 1:02:56*
+ *최종 업데이트: 2026. 5. 25. 오전 1:03:11*
